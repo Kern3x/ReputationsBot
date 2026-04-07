@@ -21,8 +21,7 @@ class MessageHandler:
                 if actor_id == target_id or settings.bot_id == target_id:
                     return
 
-                member = await bot.get_chat_member(message.chat.id, target_id)
-                first_name = member.user.first_name or "Unknown"
+                first_name = message.reply_to_message.from_user.first_name or "Unknown"
 
                 result = await service.process_reply_command(
                     actor_id=actor_id,

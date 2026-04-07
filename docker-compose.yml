@@ -25,12 +25,24 @@ services:
       dockerfile: Dockerfile
     container_name: reputationsbot-app
     restart: unless-stopped
+    init: true
     env_file:
       - .env
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
     depends_on:
       postgres:
         condition: service_healthy
-    command: ["python", "start_bot.py"]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 512m
+    cpus: 1.0
+    pids_limit: 200
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
 volumes:
   postgres_data:

@@ -1,12 +1,17 @@
 from dataclasses import dataclass
+from decimal import Decimal
+import logging
 
 from app.repos import RepController
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
 class CommandResult:
     action: str | None
-    reputation: float | None = None
+    reputation: Decimal | None = None
 
 
 class ReputationService:
@@ -39,7 +44,7 @@ class ReputationService:
         actor_id: int,
         target_id: int,
         message_text: str,
-        min_rep_for_reduce: float = 15.0,
+        min_rep_for_reduce: Decimal = Decimal("15.0"),
     ) -> CommandResult:
         await self.ensure_user(actor_id)
         await self.ensure_user(target_id)
@@ -48,12 +53,20 @@ class ReputationService:
 
         if command in self.rep_up:
             reputation = await self.repo.increase_rep(target_id)
+            logger.debug("Reputation increased user_id=%s new_rep=%s", target_id, reputation)
             return CommandResult(action="increase", reputation=reputation)
 
         if command in self.rep_down:
             actor_rep = await self.repo.get_rep(actor_id)
             if actor_rep is not None and actor_rep >= min_rep_for_reduce:
                 reputation = await self.repo.reduce_rep(target_id, reason=reason)
+                logger.debug(
+                    "Reputation reduced user_id=%s actor_id=%s reason=%s new_rep=%s",
+                    target_id,
+                    actor_id,
+                    reason,
+                    reputation,
+                )
                 return CommandResult(action="reduce", reputation=reputation)
             return CommandResult(action=None)
 

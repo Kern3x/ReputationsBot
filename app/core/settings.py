@@ -25,6 +25,7 @@ ATTENTION_TEXT = """⚠️ Attention! Joined user with overlow reputation! ⚠�
 class Settings:
     bot_token: str
     bot_id: int
+    log_level: str
     db_host: str
     db_port: int
     db_name: str
@@ -44,6 +45,7 @@ class Settings:
 settings = Settings(
     bot_token=os.environ.get("TELEGRAM_BOT_TOKEN", ""),
     bot_id=int(os.environ.get("BOT_ID", "0")),
+    log_level=os.environ.get("LOG_LEVEL", "INFO"),
     db_host=os.environ.get("POSTGRES_HOST", "postgres"),
     db_port=int(os.environ.get("POSTGRES_PORT", "5432")),
     db_name=os.environ.get("POSTGRES_DB", "reputations_bot"),
