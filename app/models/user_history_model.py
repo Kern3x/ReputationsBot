@@ -1,17 +1,15 @@
 from datetime import datetime
-from sqlalchemy import Column, BigInteger, Integer, String, DateTime
 
-from config import config
+from sqlalchemy import BigInteger, DateTime, Integer, String, func
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.db import Base
 
 
-dev_config = config.get("development")
-
-
-class UserRepHistory(dev_config.Base):
+class UserRepHistory(Base):
     __tablename__ = "user_rep_history"
-    id = Column(Integer(), primary_key=True)
-    user_id = Column(BigInteger(), nullable=False)
-    reason = Column(String(255), nullable=False)
-    date = Column(
-        DateTime, server_default=datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M:%S")
-    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
+    reason: Mapped[str] = mapped_column(String(255), nullable=False)
+    date: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())

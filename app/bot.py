@@ -1,22 +1,22 @@
-import telebot
-from config import config
-from app.handlers import MessageHandler, JoinedUserHandler, GetHistoryHandler
+from telebot.async_telebot import AsyncTeleBot
 
-
-dev_config = config.get("development")
-base_config = config.get("base")
-
-# Create a database table
-dev_config.Base.metadata.create_all(dev_config.engine)
+from app.core import settings
+from app.db import init_database
+from app.handlers import GetHistoryHandler, JoinedUserHandler, MessageHandler
 
 
 class TelegramBot:
     def __init__(self) -> None:
-        self.bot = telebot.TeleBot(base_config.BOT_TOKEN)
+        if not settings.bot_token:
+            raise ValueError("TELEGRAM_BOT_TOKEN is not set in environment")
+
+        self.bot = AsyncTeleBot(settings.bot_token)
         self.bot.parse_mode = "html"
+
         GetHistoryHandler(self.bot)
         MessageHandler(self.bot)
         JoinedUserHandler(self.bot)
 
-    def start(self):
-        self.bot.infinity_polling()
+    async def start(self):
+        await init_database()
+        await self.bot.infinity_polling(skip_pending=True)

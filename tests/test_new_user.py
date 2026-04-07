@@ -1,15 +1,9 @@
 import pytest
 
-from app.database import RepController
-from config import drop_tables
 
+@pytest.mark.asyncio
+async def test_add_new_user(rep_controller):
+    if not await rep_controller.get_user(1):
+        await rep_controller.add_new_user(1)
 
-db = RepController()
-
-
-@pytest.mark.usefixtures("drop_tables")
-def test_add_new_user():
-    if not db.get_user(1):
-        db.add_new_user(1)
-
-    assert db.get_user(1)
+    assert await rep_controller.get_user(1)

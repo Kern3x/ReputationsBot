@@ -1,60 +1,54 @@
-from app.database import RepController
-from config import config
-
-
-deb_config = config.get("development")
+from app.core import settings
+from app.services import ReputationService
 
 
 class MessageHandler:
     def __init__(self, bot) -> None:
-        self.rep_up = ["+rep", "+реп", "+r", "+р"]
-        self.rep_down = ["-rep", "-реп", "-r", "-р"]
-        self.info = ["!rep", "!реп", "!r", "!р", "!info"]
+        service = ReputationService()
 
         @bot.message_handler(content_types=["text"], chat_types=["group", "supergroup"])
-        def messages(message):
-            db = RepController()
-            msg = message.text
-            chat_id = message.chat.id
-            my_id = message.from_user.id
-
-            if not db.get_user(my_id):
-                db.add_new_user(my_id)
+        async def messages(message):
+            actor_id = message.from_user.id
+            message_text = message.text or ""
+            command, _ = service.split_command(message_text)
+            response_text = None
 
             if message.reply_to_message:
-                user_id = message.reply_to_message.from_user.id
-                user_fname = bot.get_chat_member(chat_id, user_id).user.first_name
+                if command not in service.rep_up | service.rep_down | service.info:
+                    return
 
-                if my_id != user_id and deb_config.bot_id != user_id:
-                    if not db.get_user(user_id):
-                        db.add_new_user(user_id)
+                target_id = message.reply_to_message.from_user.id
+                if actor_id == target_id or settings.bot_id == target_id:
+                    return
 
-                    if msg in self.rep_up:
-                        db.increase_rep(user_id)
-                        text = (
-                            f"📈 Reputation for <b>{user_fname}</b>, has been increased!"
-                        )
+                member = await bot.get_chat_member(message.chat.id, target_id)
+                first_name = member.user.first_name or "Unknown"
 
-                    if (msg.split(" ")[0] in self.rep_down) and (
-                        db.get_rep(my_id) >= 15
-                    ):
-                        db.reduce_rep(user_id)
-                        try:
-                            reason = msg.split(" ")[1]
-                            db.reduce_rep_history(user_id, reason)
-                        except:
-                            pass
-                        text = (
-                            f"📉 Reputation for <b>{user_fname}</b>, has been reduced!"
-                        )
+                result = await service.process_reply_command(
+                    actor_id=actor_id,
+                    target_id=target_id,
+                    message_text=message_text,
+                )
 
-                    if msg in self.info:
-                        text = f"📊 Reputation of <b>{user_fname}</b>: {round(db.get_rep(user_id), 1)}🌟"
+                if result.action == "increase":
+                    response_text = (
+                        f"📈 Reputation for <b>{first_name}</b>, has been increased!"
+                    )
+                elif result.action == "reduce":
+                    response_text = (
+                        f"📉 Reputation for <b>{first_name}</b>, has been reduced!"
+                    )
+                elif result.action == "info" and result.reputation is not None:
+                    response_text = (
+                        f"📊 Reputation of <b>{first_name}</b>: {result.reputation:.1f}🌟"
+                    )
+            else:
+                if command not in service.info:
+                    return
 
-            if (msg in self.info) and not message.reply_to_message:
-                text = f"📊 Your reputation: {db.get_rep(my_id)}🌟"
+                result = await service.process_self_info_command(actor_id, message_text)
+                if result.action == "self_info" and result.reputation is not None:
+                    response_text = f"📊 Your reputation: {result.reputation:.1f}🌟"
 
-            try:
-                bot.reply_to(message, text)
-            except:
-                pass
+            if response_text:
+                await bot.reply_to(message, response_text)

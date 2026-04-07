@@ -1,28 +1,31 @@
-from app.database import RepController
+from app.services import ReputationService
 
 
 class GetHistoryHandler:
     def __init__(self, bot) -> None:
+        service = ReputationService()
+
         @bot.message_handler(
-            commands=["h", "history"], chat_types=["group", "supergroup"]
+            commands=["h", "history"],
+            chat_types=["group", "supergroup"],
         )
-        def get_user_history(message):
-            db = RepController()
-            my_id = message.from_user.id
+        async def get_user_history(message):
+            if not message.reply_to_message:
+                return
 
-            if message.reply_to_message:
-                user_id = message.reply_to_message.from_user.id
+            actor_id = message.from_user.id
+            target_id = message.reply_to_message.from_user.id
+            if actor_id == target_id:
+                return
 
-                if my_id != user_id:
-                    h_text = ""
-                    history = db.get_reduce_rep_history(user_id)
+            history = await service.get_reduce_rep_history(target_id)
+            if not history:
+                await bot.reply_to(message, "❌ This user has not rep history!")
+                return
 
-                    for record in history:
-                        h_text += f"Reason: <b>{record.reason}</b>\nDate: <b>{record.date}</b>\n\n"
-
-                    if history:
-                        bot.reply_to(
-                            message, "🗃 Reducing rep history of user:\n\n" + h_text
-                        )
-                        return
-                    bot.reply_to(message, "❌ This user has not rep history!")
+            lines = [
+                f"Reason: <b>{record.reason}</b>\nDate: <b>{record.date}</b>"
+                for record in history
+            ]
+            payload = "\n\n".join(lines)
+            await bot.reply_to(message, "🗃 Reducing rep history of user:\n\n" + payload)

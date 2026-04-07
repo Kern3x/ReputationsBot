@@ -1,19 +1,13 @@
 import pytest
 
-from app.database import RepController
-from config import drop_tables
 
+@pytest.mark.asyncio
+async def test_increase_rep(rep_controller):
+    if not await rep_controller.get_user(1):
+        await rep_controller.add_new_user(1)
 
-db = RepController()
+    rep_old = (await rep_controller.get_user(1)).reputation
+    await rep_controller.increase_rep(1)
+    rep_new = (await rep_controller.get_user(1)).reputation
 
-
-@pytest.mark.usefixtures("drop_tables")
-def test_increase_rep():
-    if not db.get_user(1):
-        db.add_new_user(1)
-
-    rep_old = db.get_user(1).reputation
-    db.increase_rep(1)
-    rep_new = db.get_user(1).reputation
-    
     assert rep_new > rep_old
